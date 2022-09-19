@@ -4,7 +4,7 @@
 
 gcloud auth application-default login
 
-pulumi stack select ParsecDigitial/nft-art-loans-nftfi-loan-bot/dev
+pulumi stack select dev
 
 pulumi up
 

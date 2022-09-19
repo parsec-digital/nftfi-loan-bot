@@ -9,15 +9,16 @@ const kmsCredentials = {
   keyId: "pk--nft-art-loans--1-6181a53", // the name/id of your key in the key ring
   keyVersion: "1", // the version of the key
 };
-const providerUrl = "https://eth-goerli.g.alchemy.com/v2/t2TpJaiQHHMeBL1cEZH8CNUDkgBdND_9"
-const provider = ethers.providers.getDefaultProvider(providerUrl)
+const providerUrl = "https://eth-goerli.g.alchemy.com/v2/t2TpJaiQHHMeBL1cEZH8CNUDkgBdND_9";
+const provider = ethers.providers.getDefaultProvider(providerUrl);
 let signer = new GcpKmsSigner(kmsCredentials);
 signer = signer.connect(provider);
 // const pk = "0x37e85c9894edc1a97dc34624b97a1b4c18921b188b2945966ac68ff47521f622"
 // const signer = new ethers.Wallet(pk, provider)
+let nftfi = undefined;
 
-export const handle = async function (request, response) {
-  const nftfi = await NFTfi.init({
+async function initNFTfi () {
+  nftfi = nftfi || await NFTfi.init({
     config: { api: { key: 'AIzaSyCAq5PokwMfIJKDYR5kpU9fH3BxtPwPM3k' } },
     ethereum: {
       account: {  
@@ -33,6 +34,11 @@ export const handle = async function (request, response) {
       provider: { url: providerUrl }
     }
   });
+}
+
+export const handle = async function (event) {
+  await initNFTfi()
+  const payload = JSON.parse(Buffer.from(event.data, 'base64').toString())
   let offer = await nftfi.offers.create({
     terms: {
       duration: 2592000,
@@ -57,5 +63,6 @@ export const handle = async function (request, response) {
       dryRun: true
     }
   });
-  response.status(200).send(JSON.stringify(offer));
+  let address = await nftfi.account.getAuthAddress()
+  console.log(">>>", address, JSON.stringify(payload), JSON.stringify(offer))
 };
