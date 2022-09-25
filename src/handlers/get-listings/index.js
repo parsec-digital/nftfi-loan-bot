@@ -1,23 +1,25 @@
 import Bot from '@nftartloans/js';
 import { GcpKmsSigner } from "ethers-gcp-kms-signer";
 import { PubSub } from "@google-cloud/pubsub";
+import { SecretManagerServiceClient } from "@google-cloud/secret-manager";
 import ethers from "ethers";
 
+// Init mode
+const mode = process.env?.MODE || 'prod';
+
 // Init secrets
-const secrets = {
-  apiKey: 'AIzaSyCAq5PokwMfIJKDYR5kpU9fH3BxtPwPM3k',
-  gnosisSafeAddress: '0xf7F87d0236CC863D10870f7373D83Cceeb0D56A8',
-  providerUrl: 'https://eth-goerli.g.alchemy.com/v2/t2TpJaiQHHMeBL1cEZH8CNUDkgBdND_9',
-  kmsCredentials: {
-    projectId: "key-platform",
-    locationId: "global",
-    keyRingId: "nft-art-loans-1db8b31",
-    keyId: "signer--1-430c52e",
-    keyVersion: "1",
-  },
-  outputTopicId: "projects/nft-art-loans-nftfi-loan-bot/topics/new-listings-5b7b9b8"
+let secrets = undefined;
+async function initSecrets() {
+  if (!secrets) {
+    const client = new SecretManagerServiceClient();
+    const [version] = await client.accessSecretVersion({
+      name: `projects/config-platform-363618/secrets/nftfi-loan-bot--${mode}/versions/1`,
+    });
+    secrets = JSON.parse(version.payload.data.toString());
+  }
 }
 
+// Init bot
 let bot = undefined;
 async function initBot () {
   if (!bot) {
@@ -42,6 +44,7 @@ async function initBot () {
   }
 }
 
+// Init pubsub
 let pubsubClient = undefined;
 async function initPubsubClient() {
   if(!pubsubClient) {
@@ -49,12 +52,13 @@ async function initPubsubClient() {
   }
 }
 
+// Publish pubsub msg
 async function publishMessage(data) {
-  // Publishes the message as a string, e.g. "Hello, world!" or JSON.stringify(someObject)
   const dataBuffer = Buffer.from(data);
   try {
+    const topicId = process.env.OUTPUT_TOPIC_ID
     const messageId = await pubsubClient
-      .topic(secrets.outputTopicId)
+      .topic(topicId)
       .publishMessage({data: dataBuffer});
     console.log(`Message ${messageId} published. ${data}`);
   } catch (error) {
@@ -65,6 +69,8 @@ async function publishMessage(data) {
 
 // Handle event
 export const handle = async function (event) {
+  // Init Secrets
+  await initSecrets()
   // Init Bot
   await initBot()
   // Init Topic
@@ -95,7 +101,7 @@ export const handle = async function (event) {
           '0x670d4dd2e6badfbbd372d0d37e06cd2852754a04', // super-cool-world
           '0x64780ce53f6e966e18a22af13a2f97369580ec11', // petro-national-by-john-gerrard
           '0x620b70123fb810f6c653da7644b5dd0b6312e4d8', // space-doodles-official
-          '0xf5de760f2e916647fd766b4ad9e85ff943ce3a2b', // Paradigm TEST NFT
+          '0xd78afb925a21f87fa0e35abae2aead3f70ced96b-1', // grails
         ]
       },
       nftfi: {

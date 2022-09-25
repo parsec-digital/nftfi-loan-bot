@@ -4,6 +4,7 @@
   "dependencies": {
     "@google-cloud/functions-framework": "^3.1.2",
     "@google-cloud/pubsub": "^3.2.0",
+    "@google-cloud/secret-manager": "^4.1.3",
     "@nftartloans/js": "link:libs/nftartloans.js",
     "ethers": "^5.7.1",
     "ethers-gcp-kms-signer": "^1.1.2"

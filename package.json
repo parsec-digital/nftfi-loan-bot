@@ -1,5 +1,4 @@
 {
-    "type": "module",
     "name": "nftfi-loan-bot-v2",
     "main": "index.ts",
     "devDependencies": {

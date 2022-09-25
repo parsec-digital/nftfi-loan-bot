@@ -1,21 +1,24 @@
 import Bot from '@nftartloans/js';
 import { GcpKmsSigner } from "ethers-gcp-kms-signer";
 import { PubSub } from "@google-cloud/pubsub";
+import { SecretManagerServiceClient } from "@google-cloud/secret-manager";
 import ethers from "ethers";
+import dotenv from 'dotenv'
+dotenv.config()
+
+// Init mode
+const mode = process.env?.MODE || 'prod';
 
 // Init secrets
-const secrets = {
-  apiKey: 'AIzaSyCAq5PokwMfIJKDYR5kpU9fH3BxtPwPM3k',
-  gnosisSafeAddress: '0xf7F87d0236CC863D10870f7373D83Cceeb0D56A8',
-  providerUrl: 'https://eth-goerli.g.alchemy.com/v2/t2TpJaiQHHMeBL1cEZH8CNUDkgBdND_9',
-  kmsCredentials: {
-    projectId: "key-platform",
-    locationId: "global",
-    keyRingId: "nft-art-loans-1db8b31",
-    keyId: "signer--1-430c52e",
-    keyVersion: "1",
-  },
-  outputTopicId: "projects/nft-art-loans-nftfi-loan-bot/topics/pending-create-offer-2594f20"
+let secrets = undefined;
+async function initSecrets() {
+  if (!secrets) {
+    const client = new SecretManagerServiceClient();
+    const [version] = await client.accessSecretVersion({
+      name: `projects/config-platform-363618/secrets/nftfi-loan-bot--${mode}/versions/1`,
+    });
+    secrets = JSON.parse(version.payload.data.toString());
+  }
 }
 
 let bot = undefined;
@@ -28,6 +31,9 @@ async function initBot () {
     signer = signer.connect(provider);
     // Init Bot
     bot = await Bot.init({
+      bot: {
+        config: { mode }
+      },
       nftfi: {
         config: { api: { key: secrets.apiKey } },
         ethereum: { 
@@ -50,11 +56,11 @@ async function initPubsubClient() {
 }
 
 async function publishMessage(data) {
-  // Publishes the message as a string, e.g. "Hello, world!" or JSON.stringify(someObject)
   const dataBuffer = Buffer.from(data);
   try {
+    const topicId = process.env.OUTPUT_TOPIC_ID
     const messageId = await pubsubClient
-      .topic(secrets.outputTopicId)
+      .topic(topicId)
       .publishMessage({data: dataBuffer});
     console.log(`Message ${messageId} published. ${data}`);
   } catch (error) {
@@ -64,12 +70,20 @@ async function publishMessage(data) {
 }
 
 export const handle = async function (event) {
-  // Prepare listing
-  let listing = {"id":"MHhmNWRlNzYwZjJlOTE2NjQ3ZmQ3NjZiNGFkOWU4NWZmOTQzY2UzYTJiLzExMjIzNzI%3D","date":{"listed":"2022-09-24T13:13:26.001Z"},"nft":{"id":"1122372","address":"0xf5de760f2e916647fd766b4ad9e85ff943ce3a2b","name":"MultiFaucet Test NFT","project":{"id":"0xf5de760f2e916647fd766b4ad9e85ff943ce3a2b-1","artist":{"name":"Paradigm"},"name":"Paradigm","status":{},"contract":{"address":"0xf5de760f2e916647fd766b4ad9e85ff943ce3a2b"},"ids":{"min":"0","max":"115792089237316195423570985008687907853269984665640564039457584007913129639934"}}},"borrower":{"address":"0x5bd000ae659d81251426be803b18757fccdd9daf"},"terms":{"loan":{"duration":null,"repayment":null,"principal":null,"currency":null}},"nftfi":{"contract":{"name":"v2.loan.fixed"}}}
+  // Init Secrets
+  await initSecrets()
   // Init Bot
   await initBot()
   // Init Topic
   await initPubsubClient()
+  // Prepare listing
+  let listing;
+  if (!event.data) {
+    listing = {"id":"MHhmNWRlNzYwZjJlOTE2NjQ3ZmQ3NjZiNGFkOWU4NWZmOTQzY2UzYTJiLzExMjIzNzI%3D","date":{"listed":"2022-09-24T13:13:26.001Z"},"nft":{"id":"1122372","address":"0xf5de760f2e916647fd766b4ad9e85ff943ce3a2b","name":"MultiFaucet Test NFT","project":{"id":"0xf5de760f2e916647fd766b4ad9e85ff943ce3a2b-1","artist":{"name":"Paradigm"},"name":"Paradigm","status":{},"contract":{"address":"0xf5de760f2e916647fd766b4ad9e85ff943ce3a2b"},"ids":{"min":"0","max":"115792089237316195423570985008687907853269984665640564039457584007913129639934"}}},"borrower":{"address":"0x5bd000ae659d81251426be803b18757fccdd9daf"},"terms":{"loan":{"duration":null,"repayment":null,"principal":null,"currency":null}},"nftfi":{"contract":{"name":"v2.loan.fixed"}}}
+  } else {
+    listing = JSON.parse(Buffer.from(event.data, 'base64').toString())
+  }
+  console.log("-->", JSON.stringify(listing))
   // Construct the loan terms
   const currency = bot.nftfi.config.erc20.weth.address;
   const nft = { address: listing.nft.address, id: listing.nft.id }
@@ -80,29 +94,34 @@ export const handle = async function (event) {
   const days = 30;
   const repayment = bot.nftfi.utils.calcRepaymentAmount(principal, apr, days);
   const duration = 86400 * days; // Number of days (loan duration) in seconds
-  const terms = {
-    principal,
-    repayment,
-    duration,
-    currency
-  };
-  // Create the offer on the listing
-  let offer = {
-    terms,
-    nft: listing.nft,
-    borrower: listing.borrower,
-    nftfi: listing.nftfi
-  };
-  offer.nft['project'] = listing.nft.project;
-  offer.nft.project['floorPrice'] = floorPrice.toString();
-  offer.terms['ltv'] = ltv;
-  offer.terms['apr'] = apr
-  // Send offer terms to pubsub topic
-  if (offer) {
+  const balance = await bot.nftfi.erc20.balanceOf({
+    token: { address: currency }
+  })
+  const principalWei = ethers.BigNumber.from(principal.toString())
+  const sufficientBalance = balance.gte(principalWei)
+  if (sufficientBalance) {
+    const terms = {
+      principal,
+      repayment,
+      duration,
+      currency
+    };
+    // Create the offer on the listing
+    let offer = {
+      terms,
+      nft: listing.nft,
+      borrower: listing.borrower,
+      nftfi: listing.nftfi
+    };
+    offer.nft['project'] = listing.nft.project;
+    offer.nft.project['floorPrice'] = floorPrice.toString();
+    offer.terms['ltv'] = ltv;
+    offer.terms['apr'] = apr
+    // Send offer terms to pubsub topic
     const data = JSON.stringify(offer)
     await publishMessage(data)
   } else {
-    console.log("No offer terms available.")
+    console.log("Insufficient balance to create offer.")
   }
   console.log("Done.")
   return true;

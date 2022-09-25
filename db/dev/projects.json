@@ -1,0 +1,20 @@
+[
+  {
+    "id": "0xf5de760f2e916647fd766b4ad9e85ff943ce3a2b-1",
+    "projectId": "1",
+    "contract": {
+      "id": "0xf5de760f2e916647fd766b4ad9e85ff943ce3a2b"
+    },
+    "name": "Paradigm",
+    "artistName": "",
+    "curationStatus": null,
+    "invocations": "1",
+    "maxInvocations": "9999999999999999999",
+    "tokens": [
+      {
+        "id": "0xf5de760f2e916647fd766b4ad9e85ff943ce3a2b-1",
+        "tokenId": "0"
+      }
+    ]
+  }
+]
