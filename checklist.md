@@ -1,41 +1,35 @@
 # Bot
-
 [ ] Can load PK using secrets manager
-[ ] Can make multisig offers on NFTfi
+[:thumbsup:] Can make multisig offers on NFTfi
 
 # NFTfi
-
-[ ] Can being loans on offers
-[ ] Can move ERC20s from Loans Safe to borrower
-[ ] Can mint PromNotes to Loans Safe
-[ ] Can move ERC20s from borrower to Loans Safe
-[ ] Can move NFTs from escrow to Loans Safe
-[ ] Can burn PromNotes from Loans Safe 
+[:thumbsup:] Can being loans on offers
+[:thumbsup:] Can move ERC20s from Loans Safe to borrower
+[:thumbsup:] Can mint PromNotes to Loans Safe
+[:thumbsup:] Can move ERC20s from borrower to Loans Safe
+[ ] Can liquidate NFTs from escrow to Loans Safe
+[:thumbsup:] Can burn PromNotes from Loans Safe 
 
 # Loans Safe
-
-[ ] Enforces 1/1 confirmations
-[ ] Can implement Loans Safe Guard
-[ ] Cant remove Loans Safe Guard
+[:thumbsup:] Can enforce 1/1 confirmations
+[:thumbsup:] Can implement Loans Safe Guard
+[:thumbsup:] Cant remove Loans Safe Guard
 
 # Loans Safe Guard
-
 [ ] Can move ERC20s, NFTs, ETH to Admin Safe
 [ ] Can move ERC20s, NFTs, ETH to Mike & Mads
-[ ] Cant move ERC20s, NFTs, ETH to any other location
-[ ] Cant approve any other contracts or accounts
+[:thumbsup:] Cant call fns any other contracts or accounts
+[:thumbsup:] Cant move ERC20s, NFTs, ETH to any other location
 
 # Admin Safe
-
-[ ] Enforces 2/2 confirmations
-[ ] Can administrate Safe Guard
+[ ] Can enforce 2/2 confirmations
+[:thumbsup:] Can administrate Safe Guard
 [ ] Can move ERC20s, NFTs, ETH to Mike & Mads
-[ ] Can move ERC20s, NFTs, ETH to Loans Safe
 
 # Mike & Mads
-
-[ ] Can use cold wallets for storing PKs
-[ ] Can use cold wallets to create transactions
+[:thumbsup:] Can use cold wallets for storing PKs
+[:thumbsup:] Can use cold wallets to create transactions
 [ ] Can deposit ERC20s into Loans Safe
+[ ] Can deposit ERC20s into Admin Safe
 [ ] Can administrate Admin Safe
 [ ] Can administrate Loans Safe
