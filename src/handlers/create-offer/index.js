@@ -1,10 +1,11 @@
 import { GcpKmsSigner } from "ethers-gcp-kms-signer";
 import { SecretManagerServiceClient } from "@google-cloud/secret-manager";
 import ethers from "ethers";
-import NFTfi from "@nftfi/js";
+import Bot from '@nftartloans/js';
 
 // Init mode
-const mode = process.env?.MODE || 'prod';
+const mode = process.env?.MODE || 'dev';
+console.log('-->', JSON.stringify(process.env), mode)
 
 // Init secrets
 let secrets = undefined;
@@ -12,29 +13,33 @@ async function initSecrets() {
   if (!secrets) {
     const client = new SecretManagerServiceClient();
     const [version] = await client.accessSecretVersion({
-      name: `projects/config-platform-363618/secrets/nftfi-loan-bot--${mode}/versions/1`,
+      name: `projects/config-platform-363618/secrets/nftfi-loan-bot--${mode}/versions/2`,
     });
     secrets = JSON.parse(version.payload.data.toString());
   }
 }
 
-// Init NFTfi
-let nftfi = undefined;
-async function initNFTfi () {
-  if (!nftfi) {
+// Init bot
+let bot = undefined;
+async function initBot () {
+  if (!bot) {
     // Init provider
     const provider = ethers.providers.getDefaultProvider(secrets.providerUrl);
     // Init signer
     let signer = new GcpKmsSigner(secrets.kmsCredentials);
     signer = signer.connect(provider);
-    nftfi = nftfi || await NFTfi.init({
-      config: { api: { key: secrets.apiKey } },
-      ethereum: { 
-        provider: { url: secrets.providerUrl },
-        account: { multisig: { gnosis: { safe: { 
-          address: secrets.gnosisSafeAddress,
-          owners: { signers: [signer] } 
-        }}}},
+    // Init Bot
+    bot = await Bot.init({
+      bot: { config: { mode } },
+      nftfi: {
+        config: { api: { key: secrets.apiKey } },
+        ethereum: { 
+          provider: { url: secrets.providerUrl },
+          account: { multisig: { gnosis: { safe: { 
+            address: secrets.gnosisSafeAddress,
+            owners: { signers: [signer] } 
+          }}}}
+        }
       }
     });
   }
@@ -45,8 +50,8 @@ export const handle = async function (event) {
   try {
     // Init Secrets
     await initSecrets()
-    // Init NFTfi
-    await initNFTfi()
+    // Init Bot
+    await initBot()
     // Prepare payload
     let payload;
     if (!event.data) {
@@ -56,7 +61,7 @@ export const handle = async function (event) {
     }
     console.log("-->", JSON.stringify(payload))
     // Create signed offer
-    let offer = await nftfi.offers.create({
+    let offer = await bot.nftfi.offers.create({
       terms: payload.terms,
       nft: payload.nft,
       borrower: payload.borrower,
@@ -66,9 +71,9 @@ export const handle = async function (event) {
     offer['multisig'] = {
       gnosis: {
         safe: {
-          address: await nftfi.account.getAddress(),
+          address: await bot.nftfi.account.getAddress(),
           signer: {
-            address: await nftfi.account.getAuthAddress()
+            address: await bot.nftfi.account.getAuthAddress()
           }
         }
       }

@@ -3,11 +3,10 @@ import { GcpKmsSigner } from "ethers-gcp-kms-signer";
 import { PubSub } from "@google-cloud/pubsub";
 import { SecretManagerServiceClient } from "@google-cloud/secret-manager";
 import ethers from "ethers";
-import dotenv from 'dotenv'
-dotenv.config()
 
 // Init mode
-const mode = process.env?.MODE || 'prod';
+const mode = process.env?.MODE || 'dev';
+console.log('-->', JSON.stringify(process.env), mode)
 
 // Init secrets
 let secrets = undefined;
@@ -15,12 +14,13 @@ async function initSecrets() {
   if (!secrets) {
     const client = new SecretManagerServiceClient();
     const [version] = await client.accessSecretVersion({
-      name: `projects/config-platform-363618/secrets/nftfi-loan-bot--${mode}/versions/1`,
+      name: `projects/config-platform-363618/secrets/nftfi-loan-bot--${mode}/versions/2`,
     });
     secrets = JSON.parse(version.payload.data.toString());
   }
 }
 
+// Init bot
 let bot = undefined;
 async function initBot () {
   if (!bot) {
@@ -31,9 +31,7 @@ async function initBot () {
     signer = signer.connect(provider);
     // Init Bot
     bot = await Bot.init({
-      bot: {
-        config: { mode }
-      },
+      bot: { config: { mode } },
       nftfi: {
         config: { api: { key: secrets.apiKey } },
         ethereum: { 
