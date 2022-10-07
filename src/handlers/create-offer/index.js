@@ -1,5 +1,6 @@
 import { GcpKmsSigner } from "ethers-gcp-kms-signer";
 import { SecretManagerServiceClient } from "@google-cloud/secret-manager";
+import { MongoClient, ServerApiVersion } from "mongodb";
 import ethers from "ethers";
 import Bot from '@nftartloans/js';
 
@@ -13,9 +14,20 @@ async function initSecrets() {
   if (!secrets) {
     const client = new SecretManagerServiceClient();
     const [version] = await client.accessSecretVersion({
-      name: `projects/config-platform-363618/secrets/nftfi-loan-bot--${mode}/versions/2`,
+      name: `projects/config-platform-363618/secrets/nftfi-loan-bot--${mode}/versions/latest`,
     });
     secrets = JSON.parse(version.payload.data.toString());
+  }
+}
+
+// Init Mongo
+let mongo = undefined;
+async function initMongo() {
+  if(!mongo) {
+    const uri = secrets.mongo.uri;
+    const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
+    await client.connect();
+    mongo = client.db("dev")
   }
 }
 
@@ -30,7 +42,12 @@ async function initBot () {
     signer = signer.connect(provider);
     // Init Bot
     bot = await Bot.init({
-      bot: { config: { mode } },
+      bot: { 
+        config: { mode },
+        dependencies: {
+          mongo
+        } 
+      },
       nftfi: {
         config: { api: { key: secrets.apiKey } },
         ethereum: { 
@@ -50,6 +67,8 @@ export const handle = async function (event) {
   try {
     // Init Secrets
     await initSecrets()
+    // Init Mongo
+    await initMongo()
     // Init Bot
     await initBot()
     // Prepare payload
