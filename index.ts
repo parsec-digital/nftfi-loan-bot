@@ -94,7 +94,7 @@ const get_new_allowed_listings_job = new gcp.cloudscheduler.Job(`new-listings-jo
   },
   region: "us-central1",
   attemptDeadline: "60s",
-  schedule: "*/2 * * * *",
+  schedule: "*/5 * * * *",
 });
 
 // Permissions

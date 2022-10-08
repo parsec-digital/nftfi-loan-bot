@@ -76,7 +76,7 @@ async function publishMessage(data) {
     const messageId = await pubsubClient
       .topic(topicId)
       .publishMessage({data: dataBuffer});
-    console.log(`Message ${messageId} published. ${data}`);
+    console.log(`Message ${messageId} published. ${JSON.stringify(data)}`);
   } catch (error) {
     console.error(`Received error while publishing: ${error.message}`);
     process.exitCode = 1;
@@ -99,7 +99,6 @@ export const handle = async function (event) {
   } else {
     listing = JSON.parse(Buffer.from(event.data, 'base64').toString())
   }
-  console.log("-->", JSON.stringify(listing))
   // Construct the loan terms
   const currency = bot.nftfi.config.erc20.weth.address;
   const nft = { address: listing.nft.address, id: listing.nft.id }
@@ -115,6 +114,7 @@ export const handle = async function (event) {
   })
   const principalWei = ethers.BigNumber.from(principal.toString())
   const sufficientBalance = balance.gte(principalWei)
+  let offer;
   if (sufficientBalance) {
     const terms = {
       principal,
@@ -123,7 +123,7 @@ export const handle = async function (event) {
       currency
     };
     // Create the offer on the listing
-    let offer = {
+    offer = {
       terms,
       nft: listing.nft,
       borrower: listing.borrower,
@@ -137,7 +137,7 @@ export const handle = async function (event) {
     const data = JSON.stringify(offer)
     await publishMessage(data)
   } else {
-    console.log("Insufficient balance to create offer.")
+    console.log(`Insufficient balance to create offer: ${JSON.stringify(offer)}`)
   }
   console.log("Done.")
   return true;

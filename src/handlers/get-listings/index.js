@@ -70,18 +70,30 @@ async function initPubsubClient() {
   }
 }
 
-// Publish pubsub msg
-async function publishMessage(data) {
-  const dataBuffer = Buffer.from(data);
-  try {
+// Publish listings
+const publishListings = function(listings) {
+  if (listings.length > 0) {
     const topicId = process.env.OUTPUT_TOPIC_ID
-    const messageId = await pubsubClient
-      .topic(topicId)
-      .publishMessage({data: dataBuffer});
-    console.log(`Message ${messageId} published. ${data}`);
-  } catch (error) {
-    console.error(`Received error while publishing: ${error.message}`);
-    process.exitCode = 1;
+    const maxMessages = 10;
+    const maxWaitTime = 10000;
+    const publisher = pubsubClient.topic(topicId, {
+      batching: {
+        maxMessages: maxMessages,
+        maxMilliseconds: maxWaitTime,
+      }
+    })
+    for (const listing of listings) {
+      publisher
+        .publish(Buffer.from(JSON.stringify(listing)))
+        .then(results => {
+          console.log(`Message ${results} published.`);
+        })
+        .catch(err => {
+          console.error('Error publishing message:', err);
+        });
+    }
+  } else {
+    console.log("No listings available.")
   }
 }
 
@@ -156,14 +168,7 @@ export const handle = async function (event) {
     return !offerExists;
   })
   // Send listings to pubsub topic
-  if (listings.length > 0) {
-    for (const listing of listings) {
-      const data = JSON.stringify(listing)
-      publishMessage(data)
-    }
-  } else {
-    console.log("No allowed listings available.")
-  }
+  publishListings(listings)
   console.log("Done.")
   return true;
 }
