@@ -34,8 +34,8 @@ const getCollection = async function(tokenAddress, tokenId) {
 }
 
 const cwd = process.cwd()
-const projectCollectionJsonPath = cwd + '/db/projects_collections.json'
-const projectJsonPath = cwd + '/db/projects.json'
+const projectCollectionJsonPath = cwd + '/db/prod/projects_collections.json'
+const projectJsonPath = cwd + '/db/prod/projects.json'
 const rawProjects = JSON.parse(fs.readFileSync(projectJsonPath));
 const projects = rawProjects
 

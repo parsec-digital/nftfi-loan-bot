@@ -7,7 +7,6 @@ import ethers from "ethers";
 
 // Init mode
 const mode = process.env?.MODE || 'dev';
-console.log('-->', JSON.stringify(process.env), mode)
 
 // Init secrets
 let secrets = undefined;
@@ -25,10 +24,10 @@ async function initSecrets() {
 let mongo = undefined;
 async function initMongo() {
   if(!mongo) {
-    const uri = secrets.mongo.uri;
+    const uri = secrets.mongo.readonly.uri;
     const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
     await client.connect();
-    mongo = client.db("dev")
+    mongo = client.db(secrets.mongo.readonly.db)
   }
 }
 

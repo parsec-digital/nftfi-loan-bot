@@ -342,5 +342,5 @@ const otherProjects = getOtherProjects()
 const projects = [artBlockProjects, otherProjects].flat()
 
 const cwd = process.cwd()
-const projectJsonPath = cwd + '/db/projects.json'
+const projectJsonPath = cwd + '/db/prod/projects.json'
 persistProjects(projects, projectJsonPath)

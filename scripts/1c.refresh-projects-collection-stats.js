@@ -26,8 +26,8 @@ const getStats = async function(collectionSlug) {
 }
 
 const cwd = process.cwd()
-const projectCollectionsStatsJsonPath = cwd + '/db/project_collection_stats.json'
-const projectCollectionsJsonPath = cwd + '/db/projects_collections.json'
+const projectCollectionsStatsJsonPath = cwd + '/db/prod/project_collection_stats.json'
+const projectCollectionsJsonPath = cwd + '/db/prod/projects_collections.json'
 const rawProjects = JSON.parse(fs.readFileSync(projectCollectionsJsonPath));
 const projectsCollections = rawProjects.data
 
