@@ -14,7 +14,6 @@ const create_offer_terms_archive = new gcp.storage.BucketObject(`create-offer-te
   bucket: bucket.name,
   source: new pulumi.asset.FileAsset("./src/handlers/create-offer-terms/dist.zip"),
 });
-
 const create_offer_archive = new gcp.storage.BucketObject(`create-offer-${mode}`, {
   bucket: bucket.name,
   source: new pulumi.asset.FileAsset("./src/handlers/create-offer/dist.zip"),
