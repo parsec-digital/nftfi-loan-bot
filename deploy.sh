@@ -10,9 +10,7 @@ done
 
 # Build dist.zip files
 (cd src/handlers/get-listings; ./scripts/dist.sh)
-
 (cd src/handlers/create-offer-terms; ./scripts/dist.sh)
-
 (cd src/handlers/create-offer; ./scripts/dist.sh)
 
 # Deploy stack

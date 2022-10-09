@@ -3,6 +3,8 @@ import { GcpKmsSigner } from "ethers-gcp-kms-signer";
 import { PubSub } from "@google-cloud/pubsub";
 import { SecretManagerServiceClient } from "@google-cloud/secret-manager";
 import { MongoClient, ServerApiVersion } from "mongodb";
+import bunyan from 'bunyan';
+import { LoggingBunyan } from '@google-cloud/logging-bunyan';
 import ethers from "ethers";
 
 // Init mode
@@ -19,6 +21,21 @@ async function initSecrets() {
     secrets = JSON.parse(version.payload.data.toString());
   }
 }
+
+let logger = undefined;
+const initLogger = function () {
+  if (!logger) {
+    try {
+      const loggingBunyan = new LoggingBunyan();
+      logger = bunyan.createLogger({
+        name: `create-offer-terms-${mode}`,
+        streams: [{ stream: process.stdout, level: 'info' }, loggingBunyan.stream('info')]
+      });
+    } catch (e) {
+      console.log(e);
+    }
+  }
+};
 
 // Init Mongo
 let mongo = undefined;
@@ -84,6 +101,8 @@ async function publishMessage(data) {
 }
 
 export const handle = async function (event) {
+  // Init Logger
+  initLogger()
   // Init Secrets
   await initSecrets()
   // Init Mongo
@@ -114,31 +133,36 @@ export const handle = async function (event) {
   })
   const principalWei = ethers.BigNumber.from(principal.toString())
   const sufficientBalance = balance.gte(principalWei)
-  let offer;
+  
+  const terms = {
+    principal,
+    repayment,
+    duration,
+    currency
+  };
+
+  let offer = {
+    terms,
+    nft: listing.nft,
+    borrower: listing.borrower,
+    nftfi: listing.nftfi
+  };
+  offer.nft['project'] = listing.nft.project;
+  offer.nft.project['floorPrice'] = floorPrice.toString();
+  offer.terms['ltv'] = ltv;
+  offer.terms['apr'] = apr
+
+  let error;
   if (sufficientBalance) {
-    const terms = {
-      principal,
-      repayment,
-      duration,
-      currency
-    };
-    // Create the offer on the listing
-    offer = {
-      terms,
-      nft: listing.nft,
-      borrower: listing.borrower,
-      nftfi: listing.nftfi
-    };
-    offer.nft['project'] = listing.nft.project;
-    offer.nft.project['floorPrice'] = floorPrice.toString();
-    offer.terms['ltv'] = ltv;
-    offer.terms['apr'] = apr
-    // Send offer terms to pubsub topic
     const data = JSON.stringify(offer)
     await publishMessage(data)
   } else {
-    console.log(`Insufficient balance to create offer: ${JSON.stringify(offer)}`)
+    error = 'Insufficient balance to create offer'
   }
-  console.log("Done.")
+  logger.info({
+    listing,
+    offer,
+    error
+  })
   return true;
 }

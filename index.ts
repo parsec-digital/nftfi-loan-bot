@@ -86,6 +86,35 @@ const create_offer_fn = new gcp.cloudfunctions.Function(`create-offer-${mode}`, 
   entryPoint: "handle"
 });
 
+// Big Query
+const create_offer_terms_fn_dataset = new gcp.bigquery.Dataset(`create-offer-terms-${mode}`, {
+  datasetId: `create_offer_terms_${mode}`,
+  location: "us-central1"
+});
+
+// Logging Sink
+const create_offer_terms_fn_sink = new gcp.logging.ProjectSink(`create-offer-terms-${mode}`, {
+  name: `create-offer-terms-${mode}`,
+  destination: pulumi.interpolate `bigquery.googleapis.com/${create_offer_terms_fn_dataset.id}`,
+  filter: pulumi.interpolate `resource.type = "cloud_function" AND resource.labels.function_name="${create_offer_terms_fn.name}" AND severity>=INFO AND jsonPayload.name="create-offer-terms-prod"`,
+  bigqueryOptions: {
+    usePartitionedTables: true
+  },
+  uniqueWriterIdentity: true
+});
+const create_offer_terms_fn_sink_log_writer = new gcp.projects.IAMBinding(`create-offer-terms-${mode}`, {
+  project: create_offer_terms_fn_sink.project,
+  role: "roles/bigquery.dataOwner",
+  members: [create_offer_terms_fn_sink.writerIdentity],
+});
+
+// Logging permissions
+const create_offer_terms_fn_log_writer = new gcp.projects.IAMBinding("log-writer", {
+  project: create_offer_terms_fn.project,
+  role: "roles/logging.logWriter",
+  members: ["serviceAccount:cloudfn@nft-art-loans-nftfi-loan-bot.iam.gserviceaccount.com"],
+});
+
 // Triggers
 const get_new_allowed_listings_job = new gcp.cloudscheduler.Job(`new-listings-job-${mode}`, {
   pubsubTarget: {
@@ -94,7 +123,7 @@ const get_new_allowed_listings_job = new gcp.cloudscheduler.Job(`new-listings-jo
   },
   region: "us-central1",
   attemptDeadline: "60s",
-  schedule: "*/5 * * * *",
+  schedule: "*/30 * * * *",
 });
 
 // Permissions
