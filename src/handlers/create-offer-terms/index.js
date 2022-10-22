@@ -121,48 +121,64 @@ export const handle = async function (event) {
   // Construct the loan terms
   const currency = bot.nftfi.config.erc20.weth.address;
   const nft = { address: listing.nft.address, id: listing.nft.id }
-  const floorPrice = bot.prices.getFloorPrice({ nft })
-  const apr = bot.prices.getAPR({ nft });
-  const ltv = bot.prices.getLTV({ nft });
-  const principal = floorPrice * ltv;
+  const project = bot.projects.get({ nft })
+  const stats = bot.projects.stats.get({ project }) 
+  const floorPrice = bot.prices.getFloorPrice({ stats })
+  const ltv = bot.prices.getLTV({ stats });
+  const apr = bot.prices.getAPR({ ltv });
+  const principal = (floorPrice * ltv).toString();
   const days = 30;
-  const repayment = bot.nftfi.utils.calcRepaymentAmount(principal, apr, days);
+  const repayment = bot.nftfi.utils.calcRepaymentAmount(principal, apr, days).toString();
   const duration = 86400 * days; // Number of days (loan duration) in seconds
-  const balance = await bot.nftfi.erc20.balanceOf({
-    token: { address: currency }
-  })
-  const principalWei = ethers.BigNumber.from(principal.toString())
-  const sufficientBalance = balance.gte(principalWei)
-  
-  const terms = {
-    principal,
-    repayment,
-    duration,
-    currency
-  };
-
+  const expiry = 3600 * 6 // 6 hours
   let offer = {
-    terms,
+    terms: {
+      expiry,
+      principal,
+      repayment,
+      duration,
+      currency,
+      ltv,
+      apr
+    },
+    metadata: {
+      floorPriceETH: bot.nftfi.utils.formatEther(floorPrice),
+      principalETH: bot.nftfi.utils.formatEther(principal),
+      repaymentETH: bot.nftfi.utils.formatEther(repayment)
+    },
     nft: listing.nft,
     borrower: listing.borrower,
     nftfi: listing.nftfi
   };
   offer.nft['project'] = listing.nft.project;
   offer.nft.project['floorPrice'] = floorPrice.toString();
-  offer.terms['ltv'] = ltv;
-  offer.terms['apr'] = apr
 
-  let error;
-  if (sufficientBalance) {
+  // error handling
+  let errors = {};
+  const validation = bot.prices.validate({ stats })
+  const balance = await bot.nftfi.erc20.balanceOf({
+    token: { address: currency }
+  });
+  const principalWei = ethers.BigNumber.from(principal.toString())
+  const sufficientBalance = balance.gte(principalWei)
+  
+  if (validation.valid == false ) {
+    errors = validation.errors;
+  }
+  if (!sufficientBalance) {
+    errors['terms.principal'] = ['Insufficient balance to create offer']
+  }
+
+  if (!errors) {
     const data = JSON.stringify(offer)
     await publishMessage(data)
-  } else {
-    error = 'Insufficient balance to create offer'
   }
+
+  // Add principal and repayment in ETH values
   logger.info({
     listing,
     offer,
-    error
+    errors
   })
   return true;
 }
