@@ -6,8 +6,8 @@ import { MongoClient, ServerApiVersion } from "mongodb";
 import ethers from "ethers";
 
 // Init mode
-// const mode = process.env?.MODE || 'dev';
-const mode = "prod";
+const mode = process.env?.MODE || 'dev';
+
 // Init secrets
 let secrets = undefined;
 async function initSecrets() {

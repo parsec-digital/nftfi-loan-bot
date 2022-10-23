@@ -16,14 +16,6 @@ const getArtblockProjects = async function() {
           orderBy: projectId
           orderDirection: desc
           skip: ${skip}
-          where: {
-            contract_: { 
-              id_in: [
-                "0xa7d8d9ef8d8ce8992df33d8b8cf4aebabd5bd270",
-                "0x059edd72cd353df5106d2b9cc5ab83a52287ac3a"
-              ]
-            }
-          }
         ) {
           id
           projectId
