@@ -158,7 +158,6 @@ export const handle = async function (event) {
     offer.nft.project['floorPrice'] = floorPrice.toString();
 
     // error handling
-
     const validation = bot.prices.validate({ stats })
     const balance = await bot.nftfi.erc20.balanceOf({
       token: { address: currency }
@@ -173,7 +172,7 @@ export const handle = async function (event) {
       errors['terms.principal'] = ['Insufficient balance to create offer']
     }
 
-    if (!errors) {
+    if (Object.keys(errors).length == 0) {
       const data = JSON.stringify(offer)
       await publishMessage(data)
     }

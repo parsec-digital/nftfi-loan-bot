@@ -90,26 +90,51 @@ const create_offer_terms_fn_dataset = new gcp.bigquery.Dataset(`create-offer-ter
   datasetId: `create_offer_terms_${mode}`,
   location: "us-central1"
 });
+const create_offer_fn_dataset = new gcp.bigquery.Dataset(`create-offer-${mode}`, {
+  datasetId: `create_offer_${mode}`,
+  location: "us-central1"
+});
 
 // Logging Sink
 const create_offer_terms_fn_sink = new gcp.logging.ProjectSink(`create-offer-terms-${mode}`, {
   name: `create-offer-terms-${mode}`,
   destination: pulumi.interpolate `bigquery.googleapis.com/${create_offer_terms_fn_dataset.id}`,
-  filter: pulumi.interpolate `resource.type = "cloud_function" AND resource.labels.function_name="${create_offer_terms_fn.name}" AND severity>=INFO AND jsonPayload.name="create-offer-terms-prod"`,
+  filter: pulumi.interpolate `resource.type = "cloud_function" AND resource.labels.function_name="${create_offer_terms_fn.name}" AND jsonPayload.name="create-offer-terms-prod"`,
   bigqueryOptions: {
     usePartitionedTables: true
   },
   uniqueWriterIdentity: true
 });
+const create_offer_fn_sink = new gcp.logging.ProjectSink(`create-offer-${mode}`, {
+  name: `create-offer-${mode}`,
+  destination: pulumi.interpolate `bigquery.googleapis.com/${create_offer_fn_dataset.id}`,
+  filter: pulumi.interpolate `resource.type = "cloud_function" AND resource.labels.function_name="${create_offer_fn.name}" AND jsonPayload.name="create-offer-prod"`,
+  bigqueryOptions: {
+    usePartitionedTables: true
+  },
+  uniqueWriterIdentity: true
+});
+
+// Logging Sink Writer
 const create_offer_terms_fn_sink_log_writer = new gcp.projects.IAMBinding(`create-offer-terms-${mode}`, {
   project: create_offer_terms_fn_sink.project,
   role: "roles/bigquery.dataOwner",
   members: [create_offer_terms_fn_sink.writerIdentity],
 });
+const create_offer_fn_sink_log_writer = new gcp.projects.IAMBinding(`create-offer-${mode}`, {
+  project: create_offer_fn_sink.project,
+  role: "roles/bigquery.dataOwner",
+  members: [create_offer_fn_sink.writerIdentity],
+});
 
 // Logging permissions
-const create_offer_terms_fn_log_writer = new gcp.projects.IAMBinding("log-writer", {
+const create_offer_terms_fn_log_writer = new gcp.projects.IAMBinding("create-offer-terms-log-writer", {
   project: create_offer_terms_fn.project,
+  role: "roles/logging.logWriter",
+  members: ["serviceAccount:cloudfn@nft-art-loans-nftfi-loan-bot.iam.gserviceaccount.com"],
+});
+const create_offer_fn_log_writer = new gcp.projects.IAMBinding("create-offer-log-writer", {
+  project: create_offer_fn.project,
   role: "roles/logging.logWriter",
   members: ["serviceAccount:cloudfn@nft-art-loans-nftfi-loan-bot.iam.gserviceaccount.com"],
 });

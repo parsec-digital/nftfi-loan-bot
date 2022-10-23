@@ -74,7 +74,7 @@ async function initPubsubClient() {
 const publishListings = function(listings) {
   if (listings.length > 0) {
     const topicId = process.env.OUTPUT_TOPIC_ID
-    const maxMessages = 10;
+    const maxMessages = 50;
     const maxWaitTime = 10000;
     const publisher = pubsubClient.topic(topicId, {
       batching: {
@@ -138,15 +138,15 @@ export const handle = async function (event) {
   listings = bot.projects.allowlist.filter({
     listings
   })
-  // Filter for listings that don't have offers
-  listings = listings.filter(function(listing) {
-    const nftKey = `${listing.nft.address}-${listing.nft.id}`;
-    const offerExists = offersNftKeys.includes(nftKey);
-    if (offerExists) {
-      console.log(`Offer exists for ${nftKey}, filtering out.`)
-    }
-    return !offerExists;
-  })
+  // // Filter for listings that don't have offers
+  // listings = listings.filter(function(listing) {
+  //   const nftKey = `${listing.nft.address}-${listing.nft.id}`;
+  //   const offerExists = offersNftKeys.includes(nftKey);
+  //   if (offerExists) {
+  //     console.log(`Offer exists for ${nftKey}, filtering out.`)
+  //   }
+  //   return !offerExists;
+  // })
   // Send listings to pubsub topic
   publishListings(listings)
   console.log("Done.")
