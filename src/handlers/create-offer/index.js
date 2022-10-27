@@ -5,6 +5,9 @@ import bunyan from 'bunyan';
 import { LoggingBunyan } from '@google-cloud/logging-bunyan';
 import ethers from "ethers";
 import Bot from '@nftartloans/js';
+import axios from 'axios'
+import rateLimit from 'axios-rate-limit';
+import axiosRetry from 'axios-retry';
 
 // Init mode
 const mode = process.env?.MODE || 'dev';
@@ -52,6 +55,9 @@ async function initMongo() {
 let bot = undefined;
 async function initBot () {
   if (!bot) {
+    // Init http client
+    const http = rateLimit(axios.create(), { maxRPS: 3 })
+    axiosRetry(http, { retries: 3 });
     // Init provider
     const provider = ethers.providers.getDefaultProvider(secrets.providerUrl);
     // Init signer
@@ -73,6 +79,9 @@ async function initBot () {
             address: secrets.gnosisSafeAddress,
             owners: { signers: [signer] } 
           }}}}
+        },
+        dependencies: {
+          axios: http
         }
       }
     });

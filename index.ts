@@ -46,7 +46,7 @@ const get_listings_fn = new gcp.cloudfunctions.Function(`get-listings-${mode}`, 
     MODE: mode,
     OUTPUT_TOPIC_ID: new_listings_topic.id
   },
-  timeout: 60,
+  timeout: 360,
   entryPoint: "handle"
 });
 const create_offer_terms_fn = new gcp.cloudfunctions.Function(`create-offer-terms-${mode}`, {
@@ -99,7 +99,7 @@ const create_offer_fn_dataset = new gcp.bigquery.Dataset(`create-offer-${mode}`,
 const create_offer_terms_fn_sink = new gcp.logging.ProjectSink(`create-offer-terms-${mode}`, {
   name: `create-offer-terms-${mode}`,
   destination: pulumi.interpolate `bigquery.googleapis.com/${create_offer_terms_fn_dataset.id}`,
-  filter: pulumi.interpolate `resource.type = "cloud_function" AND resource.labels.function_name="${create_offer_terms_fn.name}" AND jsonPayload.name="create-offer-terms-prod"`,
+  filter: pulumi.interpolate `resource.type = "cloud_function" AND resource.labels.function_name="${create_offer_terms_fn.name}" AND jsonPayload.name="create-offer-terms-prod" AND severity>=INFO`,
   bigqueryOptions: {
     usePartitionedTables: true
   },
@@ -108,7 +108,7 @@ const create_offer_terms_fn_sink = new gcp.logging.ProjectSink(`create-offer-ter
 const create_offer_fn_sink = new gcp.logging.ProjectSink(`create-offer-${mode}`, {
   name: `create-offer-${mode}`,
   destination: pulumi.interpolate `bigquery.googleapis.com/${create_offer_fn_dataset.id}`,
-  filter: pulumi.interpolate `resource.type = "cloud_function" AND resource.labels.function_name="${create_offer_fn.name}" AND jsonPayload.name="create-offer-prod"`,
+  filter: pulumi.interpolate `resource.type = "cloud_function" AND resource.labels.function_name="${create_offer_fn.name}" AND jsonPayload.name="create-offer-prod" AND severity>=INFO`,
   bigqueryOptions: {
     usePartitionedTables: true
   },
@@ -116,25 +116,15 @@ const create_offer_fn_sink = new gcp.logging.ProjectSink(`create-offer-${mode}`,
 });
 
 // Logging Sink Writer
-const create_offer_terms_fn_sink_log_writer = new gcp.projects.IAMBinding(`create-offer-terms-${mode}`, {
+const create_offer_terms_fn_sink_log_writer = new gcp.projects.IAMBinding(`logging-sink-binding-${mode}`, {
   project: create_offer_terms_fn_sink.project,
   role: "roles/bigquery.dataOwner",
-  members: [create_offer_terms_fn_sink.writerIdentity],
-});
-const create_offer_fn_sink_log_writer = new gcp.projects.IAMBinding(`create-offer-${mode}`, {
-  project: create_offer_fn_sink.project,
-  role: "roles/bigquery.dataOwner",
-  members: [create_offer_fn_sink.writerIdentity],
+  members: [create_offer_terms_fn_sink.writerIdentity, create_offer_fn_sink.writerIdentity],
 });
 
 // Logging permissions
-const create_offer_terms_fn_log_writer = new gcp.projects.IAMBinding("create-offer-terms-log-writer", {
+const create_offer_terms_fn_log_writer = new gcp.projects.IAMBinding(`log-writer-binding-${mode}`, {
   project: create_offer_terms_fn.project,
-  role: "roles/logging.logWriter",
-  members: ["serviceAccount:cloudfn@nft-art-loans-nftfi-loan-bot.iam.gserviceaccount.com"],
-});
-const create_offer_fn_log_writer = new gcp.projects.IAMBinding("create-offer-log-writer", {
-  project: create_offer_fn.project,
   role: "roles/logging.logWriter",
   members: ["serviceAccount:cloudfn@nft-art-loans-nftfi-loan-bot.iam.gserviceaccount.com"],
 });
@@ -147,8 +137,7 @@ const get_new_allowed_listings_job = new gcp.cloudscheduler.Job(`new-listings-jo
   },
   region: "us-central1",
   attemptDeadline: "60s",
-  // schedule: "*/30 * * * *"
-  schedule: "0 */6 * * *"
+  schedule: "0 */1 * * *"
 });
 
 // Permissions
@@ -158,7 +147,8 @@ const admin = gcp.organizations.getIAMPolicy({
     members: ["cloudfn@nft-art-loans-nftfi-loan-bot.iam.gserviceaccount.com"],
   }],
 });
-//// Cloud Functions
+
+// Cloud Functions
 const get_listings_invoker = new gcp.cloudfunctions.FunctionIamMember(`get-listings-invoker-${mode}`, {
   project: get_listings_fn.project,
   region: get_listings_fn.region,
@@ -180,7 +170,8 @@ const create_offer_invoker = new gcp.cloudfunctions.FunctionIamMember(`create-of
   role: "roles/cloudfunctions.invoker",
   member: "user:mike@parsec-digital.co",
 });
-//// Topics
+
+// Topics
 const new_listings_topic_binding = new gcp.pubsub.TopicIAMBinding(`new-listings-topic-binding-${mode}`, {
   project: new_listings_topic.project,
   topic: new_listings_topic.name,

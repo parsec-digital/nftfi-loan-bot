@@ -114,11 +114,11 @@ export const handle = async function (event) {
   // Prepare listing
   let listing;
   if (!event.data) {
-    listing = {"id":"MHhmNWRlNzYwZjJlOTE2NjQ3ZmQ3NjZiNGFkOWU4NWZmOTQzY2UzYTJiLzExMjIzNzI%3D","date":{"listed":"2022-09-24T13:13:26.001Z"},"nft":{"id":"1122372","address":"0xf5de760f2e916647fd766b4ad9e85ff943ce3a2b","name":"MultiFaucet Test NFT","project":{"id":"0xf5de760f2e916647fd766b4ad9e85ff943ce3a2b-1","artist":{"name":"Paradigm"},"name":"Paradigm","status":{},"contract":{"address":"0xf5de760f2e916647fd766b4ad9e85ff943ce3a2b"},"ids":{"min":"0","max":"115792089237316195423570985008687907853269984665640564039457584007913129639934"}}},"borrower":{"address":"0x5bd000ae659d81251426be803b18757fccdd9daf"},"terms":{"loan":{"duration":null,"repayment":null,"principal":null,"currency":null}},"nftfi":{"contract":{"name":"v2.loan.fixed"}}}
+    listing = {"id":"MHhjMTQzYmJmY2RiZGJlZDZkNDU0ODAzODA0NzUyYTA2NGE2MjJjMWYzLzE4NjE0","date":{"listed":"2022-07-08T08:22:56.083Z"},"nft":{"id":"2850","address":"0x23581767a106ae21c074b2276D25e5C3e136a68b","name":"Moonbirds #2850","project":{"name":"Moonbirds"}},"borrower":{"address":"0x6f213390f1913292555ed588de754e79a266049a"},"terms":{"loan":{"duration":null,"repayment":null,"principal":null,"currency":null}},"nftfi":{"contract":{"name":"v2-1.loan.fixed"}}}
   } else {
     listing = JSON.parse(Buffer.from(event.data, 'base64').toString())
   }
-  let errors = {};
+  let errors = [];
   let offer;
   let exception;
   try {
@@ -126,55 +126,58 @@ export const handle = async function (event) {
     const currency = bot.nftfi.config.erc20.weth.address;
     const nft = { address: listing.nft.address, id: listing.nft.id }
     const project = bot.projects.get({ nft })
-    const stats = bot.projects.stats.get({ project }) 
-    const floorPrice = bot.prices.getFloorPrice({ stats })
-    const ltv = bot.prices.getLTV({ stats });
-    const apr = bot.prices.getAPR({ ltv });
-    const principal = (floorPrice * ltv).toString();
-    const days = 30;
-    const repayment = bot.nftfi.utils.calcRepaymentAmount(principal, apr, days).toString();
-    const duration = 86400 * days; // Number of days (loan duration) in seconds
-    const expiry = 3600 * 6 // 6 hours
-    offer = {
-      terms: {
-        expiry,
-        principal,
-        repayment,
-        duration,
-        currency,
-        ltv,
-        apr
-      },
-      metadata: {
-        floorPriceETH: bot.nftfi.utils.formatEther(floorPrice),
-        principalETH: bot.nftfi.utils.formatEther(principal),
-        repaymentETH: bot.nftfi.utils.formatEther(repayment)
-      },
-      nft: listing.nft,
-      borrower: listing.borrower,
-      nftfi: listing.nftfi
-    };
-    offer.nft['project'] = listing.nft.project;
-    offer.nft.project['floorPrice'] = floorPrice.toString();
-
-    // error handling
-    const validation = bot.prices.validate({ stats })
-    const balance = await bot.nftfi.erc20.balanceOf({
-      token: { address: currency }
-    });
-    const principalWei = ethers.BigNumber.from(principal.toString())
-    const sufficientBalance = balance.gte(principalWei)
-
-    if (validation.valid == false ) {
-      errors = validation.errors;
-    }
-    if (!sufficientBalance) {
-      errors['terms.principal'] = ['Insufficient balance to create offer']
-    }
-
-    if (Object.keys(errors).length == 0) {
-      const data = JSON.stringify(offer)
-      await publishMessage(data)
+    const stats = bot.projects.stats.get({ project })
+    if (stats?.data) {
+      const floorPrice = bot.prices.getFloorPrice({ stats: stats.data })
+      const ltv = bot.prices.getLTV({ stats: stats.data });
+      const apr = bot.prices.getAPR({ ltv });
+      const principal = (floorPrice * ltv).toString();
+      const days = 30;
+      const repayment = bot.nftfi.utils.calcRepaymentAmount(principal, apr, days).toString();
+      const duration = 86400 * days; // Number of days (loan duration) in seconds
+      const expiry = (3600 * 1) + 900 // 1 hours, 15 minutes
+      offer = {
+        terms: {
+          expiry,
+          principal,
+          repayment,
+          duration,
+          currency,
+          ltv,
+          apr
+        },
+        metadata: {
+          floorPriceETH: bot.nftfi.utils.formatEther(floorPrice),
+          principalETH: bot.nftfi.utils.formatEther(principal),
+          repaymentETH: bot.nftfi.utils.formatEther(repayment)
+        },
+        nft: listing.nft,
+        borrower: listing.borrower,
+        nftfi: listing.nftfi
+      };
+      offer.nft['project'] = listing.nft.project;
+      offer.nft.project['floorPrice'] = floorPrice.toString();
+  
+      // error handling
+      const priceValidation = bot.prices.validate({ stats: stats.data })
+      const balance = await bot.nftfi.erc20.balanceOf({
+        token: { address: currency }
+      });
+      const principalWei = ethers.BigNumber.from(principal.toString())
+      const sufficientBalance = balance.gte(principalWei)
+      if (priceValidation.valid == false) {
+        errors.push(priceValidation.errors);
+      }
+      if (!sufficientBalance) {
+        errors.push({'terms.principal': ['Insufficient balance to create offer']})
+      }
+      // If no errors, send for offer execution
+      if (errors.length == 0) {
+        const data = JSON.stringify(offer)
+        await publishMessage(data)
+      }
+    } else {
+      errors.push({'stats': ['Could not pull stats for NFT']})
     }
   } catch (e) {
     exception = e.message;
