@@ -184,7 +184,7 @@ const new_offers_pipeline_job = new gcp.cloudscheduler.Job(`new-offers-pipeline-
   },
   region: "us-central1",
   attemptDeadline: "60s",
-  schedule: "*/30 */1 * * *"
+  schedule: "30 */1 * * *"
 });
 // const get_new_allowed_listings_job = new gcp.cloudscheduler.Job(`new-listings-job-${mode}`, {
 //   pubsubTarget: {

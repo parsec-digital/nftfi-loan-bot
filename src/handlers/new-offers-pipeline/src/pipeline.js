@@ -149,7 +149,7 @@ export function constructOffers(options) {
       const days = 30;
       const repayment = bot.nftfi.utils.calcRepaymentAmount(principal, apr, days).toString();
       const duration = 86400 * days; // Number of days (loan duration) in seconds
-      const expiry = (3600 * 1) + 900 // 1 hours, 15 minutes
+      const expiry = (3600 * 3) + 900 // 3 hours, 15 minutes
       offer = {
         terms: {
           expiry,
