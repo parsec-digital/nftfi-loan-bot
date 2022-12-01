@@ -1,7 +1,7 @@
 const borrowerConfig = {
   '0x7c00c9f0e7aed440c0c730a9bd9ee4f49de20d5c': { // KrypTonik
     '0x8a90cab2b38dba80c64b7734e58ee1db38b8992e': { // Doodles Official
-      ltv: 0.75,
+      ltv: 0.80,
       apr: 40,
       duration: 259200 // 3 days
     }
