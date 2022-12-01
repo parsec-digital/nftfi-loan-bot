@@ -1,4 +1,5 @@
 import ethers from 'ethers';
+import { getLTV, getAPR, getDuration } from '../shared/offers.js';
 
 export function getAllowedNFTAddresses(options) {
   const allowlist = options.bot.projects.allowlist.get()
@@ -104,7 +105,7 @@ export function getAllowedListings(options) {
     let stats = listing?.stats?.data;
     if (stats.floor_price >= (stats.thirty_day_average_price * 3)) {
       valid = false;
-      errors['floor_price'] = ['stats.floor_price < (stats.thirty_day_average_price * 3)']
+      errors['floor_price'] = ['stats.floor_price >= (stats.thirty_day_average_price * 3)']
     }
     return valid;
   })
@@ -124,9 +125,9 @@ export function getAllowedListings(options) {
     let valid = true;
     let errors = {};
     let stats = listing?.stats?.data;
-    if (stats.floor_price == 0) {
+    if (stats.floor_price <= 0.1) {
       valid = false;
-      errors['floor_price'] = ['stats.floor_price == 0']
+      errors['floor_price'] = ['stats.floor_price <= 0.1']
     }
     return valid;
   })
@@ -143,12 +144,12 @@ export function constructOffers(options) {
     const stats = listing?.stats?.data;
     if (stats) {
       const floorPrice = bot.prices.getFloorPrice({ stats });
-      const ltv = bot.prices.getLTV({ stats });
-      const apr = bot.prices.getAPR({ ltv });
+      const ltv = getLTV({ bot, listing, stats });
+      const apr = getAPR({ bot, listing, ltv }); 
       const principal = (floorPrice * ltv).toString();
-      const days = 30;
+      const duration = getDuration({ listing }) // Number of days (loan duration) in seconds
+      const days = duration / 86400;
       const repayment = bot.nftfi.utils.calcRepaymentAmount(principal, apr, days).toString();
-      const duration = 86400 * days; // Number of days (loan duration) in seconds
       const expiry = (3600 * 3) + 900 // 3 hours, 15 minutes
       offer = {
         terms: {

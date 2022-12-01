@@ -39,9 +39,9 @@ export const handle = async function (event) {
   let listings = await getListings({ bot, allowedNFTAddresses });
   // listings = getListingsWithoutOffers({ listings, offers });
   listings = await addListingInfo( { bot, listings, secrets });
-  listings = getAllowedListings({ bot, listings })
-  let offers = constructOffers({ bot, listings })
-  offers = await getValidOffers({ bot, offers })
+  listings = getAllowedListings({ bot, listings });
+  let offers = constructOffers({ bot, listings });
+  offers = await getValidOffers({ bot, offers });
   offers = await executeOffers({ bot, offers, logger })
   console.log('done.');
   return true;
